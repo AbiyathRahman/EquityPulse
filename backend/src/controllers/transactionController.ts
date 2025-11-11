@@ -22,6 +22,10 @@ export const createTransaction = async (req: Request, res:Response) => {
         if(portfolio.balance < amount && type === "buy"){
             return res.status(400).json({error:"Insufficient balance"});
         }
+        const updatedBalanceValue =
+            type === "buy" ? portfolio.balance - amount : portfolio.balance + amount;
+        const roundedBalance =
+            Math.round((updatedBalanceValue + Number.EPSILON) * 100) / 100;
         const [transaction, updatedBalance] = await prisma.$transaction([
             prisma.transaction.create({
                 data: {
@@ -36,7 +40,7 @@ export const createTransaction = async (req: Request, res:Response) => {
                     id: portfolioId
                 },
                 data: {
-                    balance: (type === "buy" ? portfolio.balance - amount : portfolio.balance + amount).toFixed(2)
+                    balance: roundedBalance
                 }
             })
         ])
