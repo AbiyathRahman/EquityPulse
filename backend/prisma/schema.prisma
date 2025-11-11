@@ -8,22 +8,23 @@ datasource db {
 }
 
 model User {
-  id         Int        @id @default(autoincrement())
-  email      String     @unique
+  id         Int         @id @default(autoincrement())
+  email      String      @unique
   name       String?
   password   String
   portfolios Portfolio[]
-  createdAt  DateTime   @default(now())
+  createdAt  DateTime    @default(now())
 }
 
 model Portfolio {
-  id           Int        @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   name         String
-  balance      Float      @default(0)
+  balance      Float         @default(0)
   transactions Transaction[]
   userId       Int
-  user         User       @relation(fields: [userId], references: [id])
-  createdAt    DateTime   @default(now())
+  user         User          @relation(fields: [userId], references: [id])
+  createdAt    DateTime      @default(now())
+  Holding      Holding[]
 }
 
 model Transaction {
@@ -31,7 +32,19 @@ model Transaction {
   symbol      String
   amount      Float
   type        String
+  priceAtExecution Float @default(0)
   portfolioId Int
-  portfolio   Portfolio  @relation(fields: [portfolioId], references: [id])
-  createdAt   DateTime   @default(now())
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model Holding {
+  id          Int       @id @default(autoincrement())
+  symbol      String
+  quantity    Float     @default(0)
+  avgBuyPrice Float     @default(0)
+  portfolioId Int
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

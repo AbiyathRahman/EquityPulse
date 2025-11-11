@@ -1,33 +1,29 @@
-import {Request, Response} from "express";
 import prisma from "../services/prismaService.js";
-import axios from "axios";
 import { getPreviousClose } from "../services/polygonService.js";
-
-export const createTransaction = async (req: Request, res:Response) => {
-    const {portfolioId, symbol, amount, type} = req.body;
-    try{
+export const createTransaction = async (req, res) => {
+    const { portfolioId, symbol, amount, type } = req.body;
+    try {
         const portfolio = await prisma.portfolio.findFirst({
             where: {
                 id: portfolioId,
-                userId: (req as any).userId
+                userId: req.userId
             }
         });
-        if(!portfolio){
-            return res.status(404).json({error:"Portfolio not found"});
+        if (!portfolio) {
+            return res.status(404).json({ error: "Portfolio not found" });
         }
-        if(amount <= 0 || !symbol || !type){
-            return res.status(400).json({error:"Invalid transaction details"});
+        if (amount <= 0 || !symbol || !type) {
+            return res.status(400).json({ error: "Invalid transaction details" });
         }
-        if(!["buy", "sell"].includes(type)){
-            return res.status(400).json({error:"Invalid transaction type"});
+        if (!["buy", "sell"].includes(type)) {
+            return res.status(400).json({ error: "Invalid transaction type" });
         }
-        if(portfolio.balance < amount && type === "buy"){
-            return res.status(400).json({error:"Insufficient balance"});
+        if (portfolio.balance < amount && type === "buy") {
+            return res.status(400).json({ error: "Insufficient balance" });
         }
-        const currentPrice = (await getPreviousClose(symbol) ?? {close: 0}).close; 
+        const currentPrice = (await getPreviousClose(symbol) ?? { close: 0 }).close;
         const updatedBalanceValue = type === "buy" ? portfolio.balance - (amount * currentPrice) : portfolio.balance + (amount * currentPrice);
-        const roundedBalance = Math.round((updatedBalanceValue + Number.EPSILON) * 100) / 100
-        
+        const roundedBalance = Math.round((updatedBalanceValue + Number.EPSILON) * 100) / 100;
         const [transaction, updatedBalance] = await prisma.$transaction([
             prisma.transaction.create({
                 data: {
@@ -47,18 +43,17 @@ export const createTransaction = async (req: Request, res:Response) => {
                 }
             })
         ]);
-        if(type === "buy"){
+        if (type === "buy") {
             const existingHolding = await prisma.holding.findFirst({
                 where: {
                     portfolioId,
                     symbol
                 }
             });
-            if(existingHolding){
+            if (existingHolding) {
                 const totalCostBefore = existingHolding.quantity * existingHolding.avgBuyPrice;
                 const totalCostAfter = totalCostBefore + amount * currentPrice;
                 const totalQuantityAfter = existingHolding.quantity + amount;
-
                 await prisma.holding.update({
                     where: {
                         id: existingHolding.id
@@ -67,8 +62,9 @@ export const createTransaction = async (req: Request, res:Response) => {
                         quantity: totalQuantityAfter,
                         avgBuyPrice: totalCostAfter / totalQuantityAfter
                     }
-                })
-            }else{
+                });
+            }
+            else {
                 await prisma.holding.create({
                     data: {
                         portfolioId,
@@ -77,25 +73,27 @@ export const createTransaction = async (req: Request, res:Response) => {
                         avgBuyPrice: currentPrice,
                         createdAt: new Date()
                     }
-                })
+                });
             }
-        };
-        if(type === "sell"){
+        }
+        ;
+        if (type === "sell") {
             const existingHolding = await prisma.holding.findFirst({
                 where: {
                     portfolioId,
                     symbol
                 }
             });
-            if(existingHolding){
+            if (existingHolding) {
                 const updatedQuantity = existingHolding.quantity - amount;
-                if(updatedQuantity <= 0){
+                if (updatedQuantity <= 0) {
                     await prisma.holding.delete({
                         where: {
                             id: existingHolding.id
                         }
-                    })
-                }else{
+                    });
+                }
+                else {
                     await prisma.holding.update({
                         where: {
                             id: existingHolding.id
@@ -103,36 +101,33 @@ export const createTransaction = async (req: Request, res:Response) => {
                         data: {
                             quantity: updatedQuantity
                         }
-                    })
+                    });
                 }
             }
-                
         }
-
-      return res.status(201).json({
-      message: "Transaction successful",
-      transaction,
-      newBalance: updatedBalance,
-    });
-    }catch(error){
+        return res.status(201).json({
+            message: "Transaction successful",
+            transaction,
+            newBalance: updatedBalance,
+        });
+    }
+    catch (error) {
         console.error(error);
-        return res.status(500).json({error:"Internal server error"});
+        return res.status(500).json({ error: "Internal server error" });
     }
-}
-
-export const getTransactions = async (req: Request, res:Response) => {
+};
+export const getTransactions = async (req, res) => {
     const portfolioId = Number(req.params.id);
-    const userId = (req as any).userId;
-    try{
+    const userId = req.userId;
+    try {
         const portfolio = await prisma.portfolio.findFirst({
-        where: { id: portfolioId, userId },
-    });
-
-    if (!portfolio) {
-      return res.status(404).json({
-        error: "Portfolio not found or does not belong to this user",
-      });
-    }
+            where: { id: portfolioId, userId },
+        });
+        if (!portfolio) {
+            return res.status(404).json({
+                error: "Portfolio not found or does not belong to this user",
+            });
+        }
         const transactions = await prisma.transaction.findMany({
             where: {
                 portfolioId
@@ -141,9 +136,11 @@ export const getTransactions = async (req: Request, res:Response) => {
                 createdAt: "desc"
             }
         });
-        return res.status(200).json({balance: portfolio.balance, transactions: transactions});
-    }catch(error){
-        console.error(error);
-        return res.status(500).json({error:"Internal server error"});
+        return res.status(200).json({ balance: portfolio.balance, transactions: transactions });
     }
-}
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+//# sourceMappingURL=transactionController.js.map

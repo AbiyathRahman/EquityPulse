@@ -1,18 +1,16 @@
-import { Request, Response } from "express";
 import prisma from "../services/prismaService.js";
-
-export const getSummary = async (req: Request, res: Response) => {
+export const getSummary = async (req, res) => {
     const portfolioId = Number(req.params.id);
-    const userId = (req as any).userId;
-    try{
+    const userId = req.userId;
+    try {
         const portfolio = await prisma.portfolio.findFirst({
             where: {
                 id: portfolioId,
                 userId
             }
         });
-        if(!portfolio){
-            return res.status(404).json({error:"Portfolio not found or does not belong to this user"});
+        if (!portfolio) {
+            return res.status(404).json({ error: "Portfolio not found or does not belong to this user" });
         }
         const [transactionsForTotals, recentTransactions] = await prisma.$transaction([
             prisma.transaction.findMany({
@@ -29,29 +27,26 @@ export const getSummary = async (req: Request, res: Response) => {
                 take: 5,
             }),
         ]);
-
         let totalBuys = 0;
         let totalSells = 0;
         let totalBuysValue = 0;
         let totalSellsValue = 0;
-
         transactionsForTotals.forEach((transaction) => {
             const price = transaction.priceAtExecution ?? 0;
             const transactionValue = (transaction.amount ?? 0) * price;
             if (transaction.type === "buy") {
                 totalBuys += 1;
                 totalBuysValue += transactionValue;
-            } else if (transaction.type === "sell") {
+            }
+            else if (transaction.type === "sell") {
                 totalSells += 1;
                 totalSellsValue += transactionValue;
             }
         });
-
-        const roundToCents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+        const roundToCents = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
         totalBuysValue = roundToCents(totalBuysValue);
         totalSellsValue = roundToCents(totalSellsValue);
         const profitLoss = roundToCents(totalSellsValue - totalBuysValue);
-        
         return res.status(200).json({
             portfolioId,
             portfolioName: portfolio.name,
@@ -63,9 +58,10 @@ export const getSummary = async (req: Request, res: Response) => {
             profitLoss,
             recentTransactions
         });
-    }catch(error){
-        console.error(error);
-        return res.status(500).json({error:"Internal server error"});
     }
-
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
 };
+//# sourceMappingURL=summaryController.js.map
