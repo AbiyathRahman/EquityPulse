@@ -21,6 +21,7 @@ export const createTransaction = async (req, res) => {
         }
         const priceData = await getPreviousClose(symbol).catch(() => null);
         const currentPrice = Number(priceData?.close ?? 0);
+        console.log(currentPrice);
         if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
             return res.status(502).json({ error: "Unable to retrieve a valid market price" });
         }
