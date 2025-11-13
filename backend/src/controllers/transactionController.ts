@@ -6,6 +6,7 @@ import { getPreviousClose } from "../services/polygonService.js";
 export const createTransaction = async (req: Request, res:Response) => {
     const {portfolioId, symbol, amount, type} = req.body;
     try{
+        const tradeAmount = Number(amount);
         const portfolio = await prisma.portfolio.findFirst({
             where: {
                 id: portfolioId,
@@ -15,17 +16,24 @@ export const createTransaction = async (req: Request, res:Response) => {
         if(!portfolio){
             return res.status(404).json({error:"Portfolio not found"});
         }
-        if(amount <= 0 || !symbol || !type){
+        if(!Number.isFinite(tradeAmount) || tradeAmount <= 0 || !symbol || !type){
             return res.status(400).json({error:"Invalid transaction details"});
         }
         if(!["buy", "sell"].includes(type)){
             return res.status(400).json({error:"Invalid transaction type"});
         }
-        if(portfolio.balance < amount && type === "buy"){
+        const priceData = await getPreviousClose(symbol).catch(() => null);
+        const currentPrice = Number(priceData?.close ?? 0);
+        console.log(currentPrice);
+        if(!Number.isFinite(currentPrice) || currentPrice <= 0){
+            return res.status(502).json({error:"Unable to retrieve a valid market price"});
+        }
+
+        const tradeValue = tradeAmount * currentPrice;
+        if(portfolio.balance < tradeValue && type === "buy"){
             return res.status(400).json({error:"Insufficient balance"});
         }
-        const currentPrice = (await getPreviousClose(symbol) ?? {close: 0}).close; 
-        const updatedBalanceValue = type === "buy" ? portfolio.balance - (amount * currentPrice) : portfolio.balance + (amount * currentPrice);
+        const updatedBalanceValue = type === "buy" ? portfolio.balance - tradeValue : portfolio.balance + tradeValue;
         const roundedBalance = Math.round((updatedBalanceValue + Number.EPSILON) * 100) / 100
         
         const [transaction, updatedBalance] = await prisma.$transaction([
@@ -33,9 +41,10 @@ export const createTransaction = async (req: Request, res:Response) => {
                 data: {
                     portfolioId,
                     symbol,
-                    amount,
+                    amount: tradeAmount,
                     type,
-                    priceAtExecution: currentPrice
+                    priceAtExecution: currentPrice,
+                    balance: roundedBalance
                 }
             }),
             prisma.portfolio.update({
@@ -56,8 +65,8 @@ export const createTransaction = async (req: Request, res:Response) => {
             });
             if(existingHolding){
                 const totalCostBefore = existingHolding.quantity * existingHolding.avgBuyPrice;
-                const totalCostAfter = totalCostBefore + amount * currentPrice;
-                const totalQuantityAfter = existingHolding.quantity + amount;
+                const totalCostAfter = totalCostBefore + tradeAmount * currentPrice;
+                const totalQuantityAfter = existingHolding.quantity + tradeAmount;
 
                 await prisma.holding.update({
                     where: {
@@ -73,7 +82,7 @@ export const createTransaction = async (req: Request, res:Response) => {
                     data: {
                         portfolioId,
                         symbol,
-                        quantity: amount,
+                        quantity: tradeAmount,
                         avgBuyPrice: currentPrice,
                         createdAt: new Date()
                     }
@@ -88,7 +97,7 @@ export const createTransaction = async (req: Request, res:Response) => {
                 }
             });
             if(existingHolding){
-                const updatedQuantity = existingHolding.quantity - amount;
+                const updatedQuantity = existingHolding.quantity - tradeAmount;
                 if(updatedQuantity <= 0){
                     await prisma.holding.delete({
                         where: {

@@ -21,10 +21,20 @@ model Portfolio {
   name         String
   balance      Float         @default(0)
   transactions Transaction[]
+  snapshots    PortfolioSnapshot[]
   userId       Int
   user         User          @relation(fields: [userId], references: [id])
   createdAt    DateTime      @default(now())
   Holding      Holding[]
+}
+
+model PortfolioSnapshot {
+  id            Int       @id @default(autoincrement())
+  portfolioId   Int
+  totalValue    Float
+  createdAt     DateTime  @default(now())
+
+  portfolio     Portfolio @relation(fields: [portfolioId], references: [id])
 }
 
 model Transaction {
@@ -34,6 +44,7 @@ model Transaction {
   type        String
   priceAtExecution Float @default(0)
   portfolioId Int
+  balance     Float     @default(0)
   portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
   createdAt   DateTime  @default(now())
 }

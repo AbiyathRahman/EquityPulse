@@ -1,7 +1,8 @@
-import axios from "axios";
 import redis from "../services/redisService.js";
+import axios from "axios";
 const polygon_url = 'https://api.massive.com';
 const apiKey = process.env.POLY_API_KEY;
+
 
 const cacheGetOrSet = async (key: string, fetchFn: () => Promise<any>, ttlSeconds = 86400) => {
     const cached = await redis.get(key);
@@ -16,22 +17,31 @@ const cacheGetOrSet = async (key: string, fetchFn: () => Promise<any>, ttlSecond
 }
 
 export const getPreviousClose = async (symbol: string) => {
-    
-    const key = `prevclose:${symbol}`;
-    return cacheGetOrSet(key, async () => {
-    const { data } = await axios.get(`${polygon_url}/aggs/ticker/${symbol}/prev`, {
-      params: { apiKey: apiKey },
-    });
-    return data.results?.[0] || null;
-  }, 86400); // cache for 24h
+    try {
+        const response = await axios.get(`${polygon_url}/v2/aggs/ticker/${symbol}/prev?apiKey=${apiKey}`);
+        const result = response.data.results?.[0];
+        if (!result)
+            return null;
+        return {
+            symbol,
+            close: result.c,
+            high: result.h,
+            low: result.l,
+            open: result.o,
+            volume: result.v,
+            timeStamp: result.t
+        };
+    }
+    catch (error) {
+        console.error(error);
+        return null;
+    }
 };
 
 export const getLastTrade = async (symbol: string) => {
   const key = `lasttrade:${symbol}`;
   return cacheGetOrSet(key, async () => {
-    const { data } = await axios.get(`https://api.massive.io/v2/last/trade/${symbol}`, {
-      params: { apiKey: apiKey },
-    });
+    const { data } = await axios.get(`${polygon_url}/v2/last/trades/${symbol}/?apiKey=${apiKey}`);
     return data?.results || null;
   }, 60); // cache for 1 minute
 };
