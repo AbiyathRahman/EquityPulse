@@ -17,36 +17,56 @@ model User {
 }
 
 model Portfolio {
-  id           Int           @id @default(autoincrement())
+  id           Int                 @id @default(autoincrement())
   name         String
-  balance      Float         @default(0)
+  balance      Float               @default(0)
   transactions Transaction[]
   snapshots    PortfolioSnapshot[]
   userId       Int
-  user         User          @relation(fields: [userId], references: [id])
-  createdAt    DateTime      @default(now())
+  user         User                @relation(fields: [userId], references: [id])
+  createdAt    DateTime            @default(now())
   Holding      Holding[]
+  Order        Order[]
 }
 
 model PortfolioSnapshot {
-  id            Int       @id @default(autoincrement())
-  portfolioId   Int
-  totalValue    Float
-  createdAt     DateTime  @default(now())
+  id          Int      @id @default(autoincrement())
+  portfolioId Int
+  totalValue  Float
+  createdAt   DateTime @default(now())
 
-  portfolio     Portfolio @relation(fields: [portfolioId], references: [id])
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+}
+
+model Order {
+  id          Int       @id @default(autoincrement())
+  portfolioId Int
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
+
+  symbol     String
+  side       String // 'buy' | 'sell'
+  type       String // 'market' | 'limit' | 'stop'
+  quantity   Float
+  limitPrice Float?
+  stopPrice  Float?
+
+  status           String    @default("pending") // 'pending' | 'filled' | 'cancelled' | 'expired'
+  priceAtExecution Float?
+  executedAt       DateTime?
+
+  createdAt DateTime @default(now())
 }
 
 model Transaction {
-  id          Int       @id @default(autoincrement())
-  symbol      String
-  amount      Float
-  type        String
-  priceAtExecution Float @default(0)
-  portfolioId Int
-  balance     Float     @default(0)
-  portfolio   Portfolio @relation(fields: [portfolioId], references: [id])
-  createdAt   DateTime  @default(now())
+  id               Int       @id @default(autoincrement())
+  symbol           String
+  amount           Float
+  type             String
+  priceAtExecution Float     @default(0)
+  portfolioId      Int
+  balance          Float     @default(0)
+  portfolio        Portfolio @relation(fields: [portfolioId], references: [id])
+  createdAt        DateTime  @default(now())
 }
 
 model Holding {
