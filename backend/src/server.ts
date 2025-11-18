@@ -11,8 +11,23 @@ import { takeDailySnapshot } from "./services/snapshotService.js";
 import http from "http";
 import { Server } from "socket.io";
 import { handleSocketEvents, startPriceFeed } from "./services/livePriceService.js";
+import orderRoute from "./routes/orderRoute.js";
+import cors from "cors";
+import type { CorsOptions } from "cors";
 const app = express();
 dotenv.config();
+
+const allowedOrigins = (process.env.CLIENT_URL ?? process.env.FRONTEND_URL ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
+const corsOptions: CorsOptions = allowedOrigins.length
+    ? { origin: allowedOrigins, credentials: true }
+    : { origin: "*" };
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 const server = http.createServer(app);
@@ -20,10 +35,10 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
 export const io = new Server(server, {
     cors: {
-        origin: "*",
+        origin: corsOptions.origin,
+        credentials: "credentials" in corsOptions ? corsOptions.credentials : false,
     },
 });
-
 cron.schedule('5 17 * * 1-5', async () => {
     try{
         await takeDailySnapshot();
@@ -44,6 +59,7 @@ app.use('/transaction', transactionRoute);
 app.use('/summary', summaryRoute);
 app.use('/analytics', analyticsRoute);
 app.use('/health', healthRoute);
+app.use('/order', orderRoute);
 
 server.listen(PORT, () => {
     console.log(`Server (HTTP + Socket.IO) running on port ${PORT}`);
