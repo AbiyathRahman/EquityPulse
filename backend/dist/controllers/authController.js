@@ -97,4 +97,37 @@ export const getCurrentUser = async (req, res) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+export const changePassword = async (req, res) => {
+    const userId = req.userId;
+    const { currentPassword, newPassword } = req.body;
+    if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Current and new password are required" });
+    }
+    if (!passwordPolicy.test(newPassword)) {
+        return res.status(400).json({ error: "Password does not meet requirements" });
+    }
+    try {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+        const valid = await bcrypt.compare(currentPassword, user.password);
+        if (!valid) {
+            return res.status(401).json({ error: "Current password is incorrect" });
+        }
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashed },
+        });
+        return res.status(200).json({ message: "Password updated successfully" });
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
 //# sourceMappingURL=authController.js.map

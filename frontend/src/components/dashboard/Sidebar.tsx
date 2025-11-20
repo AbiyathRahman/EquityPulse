@@ -1,11 +1,14 @@
 import { NavLink } from "react-router-dom";
 
 const navItems = [
-  { label: "Overview", path: "/" },
+  { label: "Overview", path: "/dashboard" },
   { label: "Portfolio", path: "/portfolio" },
   { label: "Trades", path: "/trades" },
+  { label: "Holdings", path: "/holdings" },
+  { label: "Asset", path: "/asset/AAPL" },
+  { label: "Transactions", path: "/transactions" },
   { label: "Orders", path: "/orders" },
-  { label: "Analytics", path: "/analytics" },
+  { label: "Summary", path: "/summary" },
   { label: "Settings", path: "/settings" },
 ];
 

@@ -13,6 +13,8 @@ import { Server } from "socket.io";
 import { handleSocketEvents, startPriceFeed } from "./services/livePriceService.js";
 import orderRoute from "./routes/orderRoute.js";
 import holdingsRoute from "./routes/holdingsRoute.js";
+import assetRoute from "./routes/assetRoute.js";
+import userRoute from "./routes/userRoute.js";
 import cors from "cors";
 const app = express();
 dotenv.config();
@@ -55,6 +57,8 @@ app.use('/analytics', analyticsRoute);
 app.use('/health', healthRoute);
 app.use('/order', orderRoute);
 app.use('/holdings', holdingsRoute);
+app.use('/asset', assetRoute);
+app.use('/user', userRoute);
 server.listen(PORT, () => {
     console.log(`Server (HTTP + Socket.IO) running on port ${PORT}`);
 });

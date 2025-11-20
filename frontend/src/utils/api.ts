@@ -1,7 +1,7 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
-const getToken = () =>
+export const getToken = () =>
   typeof window !== "undefined"
     ? window.localStorage.getItem("equitypulse-token")
     : null;
@@ -46,6 +46,26 @@ export const postJson = async <T>(
 export const getJson = async <T>(path: string): Promise<T> => {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "GET",
+    headers: buildHeaders(),
+  });
+  return handleResponse<T>(response);
+};
+
+export const patchJson = async <T>(
+  path: string,
+  body: Record<string, unknown>
+): Promise<T> => {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers: buildHeaders(),
+    body: JSON.stringify(body),
+  });
+  return handleResponse<T>(response);
+};
+
+export const deleteJson = async <T>(path: string): Promise<T> => {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
     headers: buildHeaders(),
   });
   return handleResponse<T>(response);

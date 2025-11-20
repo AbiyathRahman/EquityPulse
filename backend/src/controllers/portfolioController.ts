@@ -180,4 +180,67 @@ export const getPortfolioHistory = async (req: Request, res: Response) => {
         console.error(error);
         return res.status(500).json({error:"Internal server error"});
     }
-}
+};
+
+export const updatePortfolioName = async (req: Request, res: Response) => {
+    const portfolioId = Number(req.params.id);
+    const userId = (req as any).userId;
+    const { name } = req.body;
+    if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ error: "Portfolio name is required" });
+    }
+    if (Number.isNaN(portfolioId)) {
+        return res.status(400).json({ error: "Invalid portfolio id" });
+    }
+    try {
+        const portfolio = await prisma.portfolio.findFirst({
+            where: { id: portfolioId, userId },
+        });
+        if (!portfolio) {
+            return res.status(404).json({ error: "Portfolio not found or does not belong to this user" });
+        }
+        const updated = await prisma.portfolio.update({
+            where: { id: portfolioId },
+            data: { name: name.trim() },
+        });
+        return res.status(200).json({ message: "Portfolio renamed successfully", portfolio: updated });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const deletePortfolio = async (req: Request, res: Response) => {
+    const portfolioId = Number(req.params.id);
+    const userId = (req as any).userId;
+    if (Number.isNaN(portfolioId)) {
+        return res.status(400).json({ error: "Invalid portfolio id" });
+    }
+    try {
+        const portfolio = await prisma.portfolio.findFirst({
+            where: { id: portfolioId, userId },
+            include: { Holding: true },
+        });
+        if (!portfolio) {
+            return res.status(404).json({ error: "Portfolio not found or does not belong to this user" });
+        }
+        if (portfolio.Holding.length > 0) {
+            return res.status(400).json({
+                error: "This portfolio still contains holdings. Sell assets before deleting.",
+                holdingsCount: portfolio.Holding.length,
+            });
+        }
+
+        await prisma.$transaction([
+            prisma.order.deleteMany({ where: { portfolioId } }),
+            prisma.transaction.deleteMany({ where: { portfolioId } }),
+            prisma.portfolioSnapshot.deleteMany({ where: { portfolioId } }),
+            prisma.portfolio.delete({ where: { id: portfolioId } }),
+        ]);
+
+        return res.status(200).json({ message: "Portfolio deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};

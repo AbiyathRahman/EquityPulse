@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { AuthShell } from "../components/AuthShell";
 import { FieldLabel, TextInput } from "../components/FormControls";
 import { postJson } from "../utils/api";
+import { saveUserProfile } from "../utils/userProfile";
 
 type Status =
   | { type: "success"; message: string }
@@ -40,7 +41,7 @@ export const LoginPage = () => {
       const body = await postJson<{
         message?: string;
         token?: string;
-        user?: { name: string };
+        user?: { name?: string | null; email?: string | null };
       }>("/auth/login", {
         email: form.email.trim(),
         password: form.password,
@@ -54,6 +55,10 @@ export const LoginPage = () => {
       if (body?.token) {
         window.localStorage.setItem("equitypulse-token", body.token);
       }
+      saveUserProfile({
+        name: body?.user?.name ?? form.email.split("@")[0],
+        email: body?.user?.email ?? form.email.trim(),
+      });
 
       setStatus({
         type: "success",

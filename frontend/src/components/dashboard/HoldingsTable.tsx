@@ -5,17 +5,24 @@ import { useLivePriceFeed } from "../../hooks/useLivePriceFeed";
 
 type SortKey = keyof Pick<
   HoldingRow,
-  "symbol" | "quantity" | "avgCost" | "livePrice" | "totalValue" | "gainLoss" | "gainLossPct"
+  | "symbol"
+  | "quantity"
+  | "avgCost"
+  | "livePrice"
+  | "totalValue"
+  | "gainLoss"
+  | "gainLossPct"
 >;
 
 const headers: { label: string; key: SortKey; align?: "left" | "right" }[] = [
   { label: "Symbol", key: "symbol" },
   { label: "Qty", key: "quantity" },
-  { label: "Avg Cost", key: "avgCost" },
+  { label: "Avg Buy Price", key: "avgCost" },
   { label: "Live Price", key: "livePrice" },
   { label: "Total Value", key: "totalValue" },
-  { label: "Gain/Loss", key: "gainLoss" },
-  { label: "%", key: "gainLossPct" },
+  { label: "Unrealized P/L", key: "gainLoss" },
+  { label: "% Change", key: "gainLossPct" },
+  { label: "Portfolio %", key: "totalValue" },
 ];
 
 const formatCurrency = (value?: number) =>
@@ -32,7 +39,13 @@ const formatNumber = (value?: number) =>
     ? value.toLocaleString(undefined, { maximumFractionDigits: 2 })
     : "--";
 
-export const HoldingsTable = ({ loading }: { loading?: boolean }) => {
+export const HoldingsTable = ({
+  loading,
+  portfolioValue,
+}: {
+  loading?: boolean;
+  portfolioValue?: number | null;
+}) => {
   const holdings = usePortfolioStore((state) => state.holdings);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
     key: "totalValue",
@@ -76,7 +89,7 @@ export const HoldingsTable = ({ loading }: { loading?: boolean }) => {
         <div>
           <p className="text-lg font-semibold text-slate-900 dark:text-white">Holdings</p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Live market data streamed via EquityPulse
+            Live positions with real-time prices
           </p>
         </div>
         <button className="rounded-2xl border border-slate-200/70 px-3 py-1 text-xs text-slate-500 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300">
@@ -98,7 +111,7 @@ export const HoldingsTable = ({ loading }: { loading?: boolean }) => {
                   {header.label}
                   {sort.key === header.key ? (
                     <span className="ml-1 text-primary-400">
-                      {sort.direction === "asc" ? "↑" : "↓"}
+                      {sort.direction === "asc" ? "▲" : "▼"}
                     </span>
                   ) : null}
                 </th>
@@ -112,12 +125,16 @@ export const HoldingsTable = ({ loading }: { loading?: boolean }) => {
                   colSpan={headers.length}
                   className="px-3 py-8 text-center text-slate-400"
                 >
-                  Loading holdings…
+                  Loading holdings...
                 </td>
               </tr>
             ) : sortedHoldings.length ? (
               sortedHoldings.map((holding) => {
                 const gainPositive = (holding.gainLoss ?? 0) >= 0;
+                const portfolioPct =
+                  portfolioValue && portfolioValue > 0
+                    ? ((holding.totalValue ?? 0) / portfolioValue) * 100
+                    : null;
                 return (
                   <tr
                     key={holding.symbol}
@@ -154,6 +171,9 @@ export const HoldingsTable = ({ loading }: { loading?: boolean }) => {
                       {typeof holding.gainLossPct === "number"
                         ? `${holding.gainLossPct.toFixed(2)}%`
                         : "--"}
+                    </td>
+                    <td className="px-3 py-3 text-slate-500 dark:text-slate-300">
+                      {portfolioPct !== null ? `${portfolioPct.toFixed(2)}%` : "--"}
                     </td>
                   </tr>
                 );

@@ -29,17 +29,25 @@ export const PortfolioChart = ({ portfolioId }: PortfolioChartProps) => {
   const [historical, setHistorical] = useState<HistoryPoint[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const source = range === "1D" ? intraday : historical;
+
   const data = useMemo(
     () =>
-      (range === "1D" ? intraday : historical).map((point) => ({
-        time: new Date(point.timeStamp).toLocaleTimeString(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+      source.map((point) => ({
+        time:
+          range === "1D"
+            ? new Date(point.timeStamp).toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : new Date(point.timeStamp).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              }),
         dateLabel: new Date(point.timeStamp).toLocaleString(),
         value: point.totalValue,
       })),
-    [range, intraday, historical]
+    [range, historical, intraday]
   );
 
   useEffect(() => {
@@ -74,7 +82,7 @@ export const PortfolioChart = ({ portfolioId }: PortfolioChartProps) => {
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {range === "1D"
               ? "Live intraday performance"
-              : `Historical performance (${range})`}
+              : `Snapshot history (${range})`}
           </p>
         </div>
         <div className="flex gap-2 rounded-2xl border border-slate-200/70 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-950/60">
@@ -96,7 +104,7 @@ export const PortfolioChart = ({ portfolioId }: PortfolioChartProps) => {
       <div className="mt-6 h-80">
         {loading && range !== "1D" ? (
           <div className="flex h-full items-center justify-center text-slate-400">
-            Loading range…
+            Loading range...
           </div>
         ) : data.length ? (
           <ResponsiveContainer width="100%" height="100%">
@@ -118,11 +126,13 @@ export const PortfolioChart = ({ portfolioId }: PortfolioChartProps) => {
                 stroke="currentColor"
                 className="text-xs text-slate-400"
                 tickFormatter={(value) =>
-                  `$${(value / 1_000_000).toFixed(1)}M`.replace(".0", "")
+                  value >= 1_000_000
+                    ? `$${(value / 1_000_000).toFixed(1)}M`.replace(".0", "")
+                    : `$${value.toLocaleString()}`
                 }
                 tickLine={false}
                 axisLine={false}
-                width={60}
+                width={70}
               />
               <Tooltip
                 cursor={{ stroke: "#94a3b8", strokeDasharray: 4 }}

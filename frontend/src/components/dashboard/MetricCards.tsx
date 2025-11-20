@@ -17,7 +17,6 @@ type MetricConfig = {
   label: string;
   icon: ComponentType<{ className?: string }>;
   isChange?: boolean;
-  suffix?: string;
   isPercent?: boolean;
 };
 
@@ -42,7 +41,6 @@ const metricConfig: MetricConfig[] = [
     key: "dailyChangePct",
     label: "Daily Change",
     icon: Percent,
-    suffix: "%",
     isPercent: true,
     isChange: true,
   },
@@ -97,7 +95,7 @@ export const MetricCards = ({ analytics, loading }: MetricCardsProps) => (
                     : "text-slate-900 dark:text-white"
                 }`}
               >
-                {loading ? "—" : formatted}
+                {loading ? "..." : formatted}
               </p>
             </div>
           </div>

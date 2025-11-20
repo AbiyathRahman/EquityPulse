@@ -43,7 +43,7 @@ export const PortfolioSummaryHeader = ({
           </p>
           <div className="mt-2 flex items-center gap-3">
             <span className="text-4xl font-semibold text-slate-900 dark:text-white">
-              {loading ? "—" : formatCurrency(value)}
+              {loading ? "..." : formatCurrency(value)}
             </span>
             <span
               className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ${
@@ -53,7 +53,7 @@ export const PortfolioSummaryHeader = ({
               }`}
             >
               <Icon className="h-4 w-4" />
-              {loading ? "—" : formatCurrency(gainLoss)}{" "}
+              {loading ? "..." : formatCurrency(gainLoss)}{" "}
               <span className="opacity-80">
                 ({loading ? "--" : formatPercent(gainLossPct)})
               </span>

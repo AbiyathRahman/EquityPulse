@@ -7,6 +7,10 @@ import type {
   PortfolioSummary,
   TransactionRow,
 } from "../stores/usePortfolioStore";
+import {
+  getDefaultPortfolioId,
+  setDefaultPortfolioId,
+} from "../utils/portfolioPrefs";
 
 type PortfolioListResponse = {
   portfolios: Array<{
@@ -30,7 +34,16 @@ type HistoryResponse = {
   snapshots?: { createdAt: string; totalValue: number }[];
 };
 
-export const usePortfolioData = () => {
+type PortfolioDetailResponse = {
+  id: number;
+  name: string;
+  balance: number;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  createdAt?: string;
+};
+
+export const usePortfolioData = (preferredPortfolioId?: number | null) => {
   useEffect(() => {
     const {
       setLoading,
@@ -61,7 +74,16 @@ export const usePortfolioData = () => {
           ownerEmail: null,
         }));
         setPortfolioList(summaries);
-        const active = portfolios[0];
+
+        const preferredId =
+          preferredPortfolioId ??
+          getDefaultPortfolioId() ??
+          undefined;
+        const active =
+          (preferredId
+            ? portfolios.find((p) => p.id === preferredId)
+            : undefined) ?? portfolios[0];
+
         if (!active) {
           setPortfolio(null);
           setAnalytics(null);
@@ -74,28 +96,30 @@ export const usePortfolioData = () => {
           return;
         }
 
-        const portfolioSummary: PortfolioSummary = {
-          id: active.id,
-          name: active.name,
-          balance: active.balance,
-          ownerName: null,
-          ownerEmail: null,
-        };
-        setPortfolio(portfolioSummary);
-
         const portfolioId = active.id;
+        setDefaultPortfolioId(portfolioId);
         const [
           analyticsRes,
           holdingsRes,
           transactionsRes,
           intradayRes,
+          portfolioDetail,
         ] = await Promise.all([
           getJson<PortfolioAnalytics>(`/analytics/get/${portfolioId}`),
           getJson<HoldingsResponse>(`/portfolio/holdings/${portfolioId}`),
           getJson<TransactionsResponse>(`/transaction/get/${portfolioId}`),
           getJson<HistoryResponse>(`/portfolio/history/${portfolioId}`),
+          getJson<PortfolioDetailResponse>(`/portfolio/${portfolioId}`),
         ]);
         if (ignore) return;
+        const portfolioSummary: PortfolioSummary = {
+          id: active.id,
+          name: active.name,
+          balance: active.balance,
+          ownerName: portfolioDetail?.ownerName ?? null,
+          ownerEmail: portfolioDetail?.ownerEmail ?? null,
+        };
+        setPortfolio(portfolioSummary);
         setAnalytics(
           analyticsRes
             ? {
@@ -107,7 +131,7 @@ export const usePortfolioData = () => {
         );
         setHoldings(holdingsRes.holdings ?? []);
         setTransactions(
-          transactionsRes.transactions.slice(0, 5) ?? []
+          transactionsRes.transactions?.slice(0, 5) ?? []
         );
         setOrders([]); // No backend endpoint for open orders yet
         const historyPoints =
@@ -136,5 +160,5 @@ export const usePortfolioData = () => {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [preferredPortfolioId]);
 };

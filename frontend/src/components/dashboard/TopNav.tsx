@@ -1,4 +1,6 @@
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../theme/ThemeProvider";
+import { clearStoredUserProfile } from "../../utils/userProfile";
 
 interface TopNavProps {
   userName?: string | null;
@@ -19,7 +21,17 @@ const getInitials = (name?: string | null, email?: string | null) => {
 
 export const TopNav = ({ userName, userEmail }: TopNavProps) => {
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const initials = getInitials(userName ?? undefined, userEmail ?? undefined);
+
+  const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("equitypulse-token");
+    }
+    clearStoredUserProfile();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200/70 bg-white/80 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/70">
       <div className="flex items-center gap-3 rounded-2xl border border-slate-200/75 bg-white/70 px-4 py-2 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -86,6 +98,26 @@ export const TopNav = ({ userName, userEmail }: TopNavProps) => {
             {initials}
           </div>
         </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-2 rounded-2xl border border-rose-200/80 bg-white px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm transition hover:-translate-y-0.5 hover:border-rose-300 hover:text-rose-700 dark:border-rose-500/40 dark:bg-slate-900 dark:text-rose-200 dark:hover:border-rose-400"
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.6}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M9 12h12m0 0-3-3m3 3-3 3"
+            />
+          </svg>
+          Logout
+        </button>
       </div>
     </header>
   );

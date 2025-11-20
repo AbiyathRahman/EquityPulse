@@ -1,10 +1,11 @@
 import prisma from "./prismaService.js";
 import { executeTrade } from "./tradeService.js";
+import { io } from "../server.js";
 export const checkAndExecuteOrderForSymbols = async (symbol, currentPrice) => {
     const pendingOrders = await prisma.order.findMany({
         where: {
             symbol,
-            status: "pending"
+            status: "pending",
         },
     });
     for (const order of pendingOrders) {
@@ -25,14 +26,14 @@ export const checkAndExecuteOrderForSymbols = async (symbol, currentPrice) => {
         if (!shouldExecute)
             continue;
         try {
-            const trade = await executeTrade({
+            await executeTrade({
                 portfolioId: order.portfolioId,
                 symbol: order.symbol,
                 side: order.side,
                 quantity: order.quantity,
                 price: order.limitPrice ?? order.stopPrice ?? undefined,
             });
-            await prisma.order.update({
+            const updated = await prisma.order.update({
                 where: { id: order.id },
                 data: {
                     status: "filled",
@@ -40,10 +41,19 @@ export const checkAndExecuteOrderForSymbols = async (symbol, currentPrice) => {
                     executedAt: new Date(),
                 },
             });
-            console.log(`✅ Executed ${order.type} ${order.side} order ${order.id} at $${currentPrice}`);
+            io.to(`portfolio-${order.portfolioId}`).emit("order-filled", {
+                orderId: order.id,
+                portfolioId: order.portfolioId,
+                symbol: order.symbol,
+                side: order.side,
+                type: order.type,
+                price: currentPrice,
+                quantity: order.quantity,
+                executedAt: updated.executedAt,
+            });
         }
         catch (err) {
-            console.log(`❌ Failed to execute ${order.type} ${order.side} order ${order.id} at $${currentPrice}`);
+            console.error(`Failed to execute ${order.type} ${order.side} order ${order.id} at $${currentPrice}`, err);
         }
     }
 };

@@ -1,0 +1,1 @@
+{"version":3,"file":"assetRoute.js","sourceRoot":"","sources":["../../src/routes/assetRoute.ts"],"names":[],"mappings":"AAAA,OAAO,OAAO,MAAM,SAAS,CAAC;AAC9B,OAAO,EAAE,aAAa,EAAE,MAAM,mCAAmC,CAAC;AAClE,OAAO,WAAW,MAAM,8BAA8B,CAAC;AAEvD,MAAM,UAAU,GAAG,OAAO,CAAC,MAAM,EAAE,CAAC;AAEpC,UAAU,CAAC,GAAG,CAAC,UAAU,EAAE,WAAW,EAAE,aAAa,CAAC,CAAC;AAEvD,eAAe,UAAU,CAAC"}
