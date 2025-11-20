@@ -19,50 +19,49 @@ export const getAnalytics = async (req: Request, res: Response) => {
         }
         const holdings = portfolio.Holding;
         if(holdings.length === 0){
-            return res.status(404).json({error:"No holdings found for this portfolio"});
+            return res.status(200).json({
+                portfolioId: portfolio.id,
+                totalValue: portfolio.balance,
+                holdingsValue: 0,
+                gainLoss: 0,
+                gainLossPercentage: 0,
+                totalInvested: 0,
+                unrealizedGainLoss: 0,
+                cashBalance: portfolio.balance,
+                dailyChangePct: 0,
+                riskScore: 50,
+                lastUpdated: new Date().toISOString()
+            });
         }
         let totalInvested = 0;
-        let totalCurrentValue = 0;
+        let holdingsValue = 0;
 
-        const enriched = await Promise.all(holdings.map(async (holding) => {
+        await Promise.all(holdings.map(async (holding) => {
             const data = await getPreviousClose(holding.symbol).catch(() => null);
-            const currentPrice = data?.close ?? holding.avgBuyPrice;
-
+            const currentPrice = Number(data?.close ?? holding.avgBuyPrice);
             const investedValue = holding.quantity * holding.avgBuyPrice;
             const currentValue = holding.quantity * currentPrice;
-            const gainLoss = currentValue - investedValue;
-            const gainLossPercent = (gainLoss / investedValue) * 100;
-
             totalInvested += investedValue;
-            totalCurrentValue += currentValue;
-
-            return{
-                symbol: holding.symbol,
-                quantity: holding.quantity,
-                avgBuyPrice: holding.avgBuyPrice.toFixed(2),
-                currentPrice: currentPrice.toFixed(2),
-                investedValue: investedValue.toFixed(2),
-                currentValue: currentValue.toFixed(2),
-                gainLoss: gainLoss.toFixed(2),
-                gainLossPercent: gainLossPercent.toFixed(2)
-            };           
-
+            holdingsValue += currentValue;
         }));
 
-        const netProfitLoss = totalCurrentValue - totalInvested;
-        const netProfitLossPercent = (netProfitLoss / totalInvested) * 100;
-
-        const topPerformers = enriched.sort((a,b) => parseFloat(b.gainLoss) - parseFloat(a.gainLoss)).slice(0, 3);
+        const gainLoss = holdingsValue - totalInvested;
+        const gainLossPercentage = totalInvested === 0 ? 0 : (gainLoss / totalInvested) * 100;
+        const totalValue = holdingsValue + portfolio.balance;
 
         return res.status(200).json({
             portfolioId: portfolio.id,
             portfolioName: portfolio.name,
-            totalInvested: totalInvested.toFixed(2),
-            currentValue: totalCurrentValue.toFixed(2),
-            netProfitLoss: netProfitLoss.toFixed(2),
-            netProfitLossPercent: netProfitLossPercent.toFixed(2),
-            topPerformers,
-            holdings: enriched,
+            totalValue,
+            holdingsValue,
+            gainLoss,
+            gainLossPercentage,
+            totalInvested,
+            unrealizedGainLoss: gainLoss,
+            cashBalance: portfolio.balance,
+            dailyChangePct: gainLossPercentage,
+            riskScore: 50,
+            lastUpdated: new Date().toISOString(),
         });
     }catch(error){
         console.error(error);

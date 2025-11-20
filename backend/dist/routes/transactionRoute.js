@@ -4,5 +4,6 @@ import requireAuth from "../middleware/requireAuth.js";
 const transactionRoute = Router();
 transactionRoute.post("/create", requireAuth, createTransaction);
 transactionRoute.get("/get/:id", requireAuth, getTransactions);
+transactionRoute.get("/:id", requireAuth, getTransactions);
 export default transactionRoute;
 //# sourceMappingURL=transactionRoute.js.map

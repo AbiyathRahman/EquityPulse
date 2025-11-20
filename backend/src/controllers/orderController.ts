@@ -88,3 +88,35 @@ export const placeOrder = async (req: Request, res: Response) => {
         return res.status(500).json({error:"Internal server error"});
     }
 }
+
+export const getPendingOrders = async (req: Request, res: Response) => {
+    const portfolioId = Number(req.params.portfolioId ?? req.params.id);
+    const userId = (req as any).userId;
+    if(Number.isNaN(portfolioId)){
+        return res.status(400).json({error:"Invalid portfolio id"});
+    }
+    try{
+        const portfolio = await prisma.portfolio.findFirst({
+            where:{
+                id: portfolioId,
+                userId
+            }
+        });
+        if(!portfolio){
+            return res.status(404).json({error:"Portfolio not found or does not belong to this user"});
+        }
+        const orders = await prisma.order.findMany({
+            where:{
+                portfolioId,
+                status: "pending"
+            },
+            orderBy:{
+                createdAt: "desc"
+            }
+        });
+        return res.status(200).json({orders});
+    }catch(error){
+        console.error(error);
+        return res.status(500).json({error:"Internal server error"});
+    }
+};

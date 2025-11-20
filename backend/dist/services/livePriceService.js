@@ -1,7 +1,11 @@
 import { io } from "../server.js";
 import { getLastTrade } from "./polygonService.js";
+import { updatedLivePortfolioValue } from "./livePortfolioService.js";
+import prisma from "./prismaService.js";
+import { checkAndExecuteOrderForSymbols } from "./orderEngineService.js";
 const socketSubscriptions = new Map();
 const symbolSubscribers = new Map();
+const portfolioSubscriptions = new Map();
 export const handleSocketEvents = () => {
     io.on("connection", (socket) => {
         console.log("Client connected", socket.id);
@@ -50,6 +54,26 @@ export const handleSocketEvents = () => {
                 socketSubscriptions.set(socket.id, socketSet);
             }
         });
+        socket.on("subscribe-portfolio", (portfolioId) => {
+            if (typeof portfolioId !== "number")
+                return;
+            console.log(`Client ${socket.id} subscribed to portfolio ${portfolioId}`);
+            socket.join(`portfolio-${portfolioId}`);
+            const portfolios = portfolioSubscriptions.get(socket.id) ?? new Set();
+            portfolios.add(portfolioId);
+            portfolioSubscriptions.set(socket.id, portfolios);
+        });
+        socket.on("unsubscribe-portfolio", (portfolioId) => {
+            if (typeof portfolioId !== "number")
+                return;
+            console.log(`Client ${socket.id} unsubscribed from portfolio ${portfolioId}`);
+            socket.leave(`portfolio-${portfolioId}`);
+            const portfolios = portfolioSubscriptions.get(socket.id);
+            portfolios?.delete(portfolioId);
+            if (portfolios && portfolios.size === 0) {
+                portfolioSubscriptions.delete(socket.id);
+            }
+        });
         socket.on("disconnect", () => {
             console.log("Client disconnected", socket.id);
             const socketSet = socketSubscriptions.get(socket.id);
@@ -63,6 +87,9 @@ export const handleSocketEvents = () => {
                 }
             });
             socketSubscriptions.delete(socket.id);
+            const portfolios = portfolioSubscriptions.get(socket.id);
+            portfolios?.forEach((portfolioId) => socket.leave(`portfolio-${portfolioId}`));
+            portfolioSubscriptions.delete(socket.id);
         });
     });
 };
@@ -84,9 +111,23 @@ export const startPriceFeed = () => {
                         io.to(socketId).emit("price-update", {
                             symbol,
                             price: priceData.price,
-                            timeStamp: priceData.timeStamp,
+                            timeStamp: priceData.timestamp,
                         });
                     });
+                    await checkAndExecuteOrderForSymbols(symbol, priceData.price);
+                    const portfolios = await prisma.portfolio.findMany({
+                        where: {
+                            Holding: {
+                                some: {
+                                    symbol
+                                }
+                            }
+                        },
+                        select: {
+                            id: true
+                        }
+                    });
+                    await Promise.all(portfolios.map((p) => updatedLivePortfolioValue(p.id)));
                 }
             }
         }
