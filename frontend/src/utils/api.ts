@@ -1,5 +1,7 @@
+// Use explicit Render backend by default; can be overridden via VITE_API_URL
 export const API_BASE_URL =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+  import.meta.env.VITE_API_URL?.replace(/\/$/, "") ??
+  "https://equitypulse-n7fx.onrender.com";
 
 export const getToken = () =>
   typeof window !== "undefined"

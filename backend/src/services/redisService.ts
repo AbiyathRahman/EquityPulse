@@ -5,6 +5,7 @@ import { Redis } from "ioredis";
 dotenv.config();
 
 const redisUrl = process.env.REDIS_URL;
+const redisTlsEnv = process.env.REDIS_TLS;
 
 if (!redisUrl) {
   throw new Error(
@@ -12,7 +13,19 @@ if (!redisUrl) {
   );
 }
 
-const redis = new Redis(redisUrl);
+// Some hosted Redis providers (Upstash, Render with TLS) require TLS. Allow opting in via env.
+const useTls =
+  (redisTlsEnv ?? "").toLowerCase() === "true" ||
+  redisUrl.toLowerCase().startsWith("rediss://");
+
+const redis = new Redis(redisUrl, {
+  // Keep connections alive and retry briefly on transient drops to avoid ECONNRESET floods
+  keepAlive: 15_000,
+  connectTimeout: 10_000,
+  maxRetriesPerRequest: 5,
+  retryStrategy: (times) => Math.min(times * 200, 2_000),
+  tls: useTls ? { rejectUnauthorized: false } : undefined,
+});
 
 redis.on("connect", () => console.log("Connected to Redis"));
 redis.on("error", (err) => console.error("Redis Error:", err));
