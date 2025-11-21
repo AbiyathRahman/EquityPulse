@@ -14,11 +14,19 @@ if (!redisUrl) {
 }
 
 // Some hosted Redis providers (Upstash, Render with TLS) require TLS. Allow opting in via env.
+const parsed = new URL(redisUrl);
+const isUpstash = parsed.hostname.includes("upstash.io");
+const preferTlsProtocol = redisUrl.toLowerCase().startsWith("rediss://");
 const useTls =
-  (redisTlsEnv ?? "").toLowerCase() === "true" ||
-  redisUrl.toLowerCase().startsWith("rediss://");
+  (redisTlsEnv ?? "").toLowerCase() === "true" || preferTlsProtocol || isUpstash;
 
-const redis = new Redis(redisUrl, {
+// Force TLS if Upstash but protocol was accidentally left as redis://
+const normalizedUrl =
+  isUpstash && parsed.protocol === "redis:"
+    ? redisUrl.replace(/^redis:\/\//i, "rediss://")
+    : redisUrl;
+
+const redis = new Redis(normalizedUrl, {
   // Keep connections alive and retry briefly on transient drops to avoid ECONNRESET floods
   keepAlive: 15_000,
   connectTimeout: 10_000,

@@ -37,6 +37,7 @@ export const registerUser = async (req: Request, res:Response) => {
                 });
 
     }catch(error){
+        console.error("registerUser failed:", error);
         return res.status(500).json({error:"Internal server error"});
     }
 
@@ -71,6 +72,7 @@ export const loginUser = async (req: Request, res:Response) => {
             token: token,
         });
     }catch(error){
+        console.error("loginUser failed:", error);
         return res.status(500).json({error:"Internal server error"});
     }
 }
